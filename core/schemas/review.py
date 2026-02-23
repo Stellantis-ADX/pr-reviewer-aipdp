@@ -237,7 +237,29 @@ class ReviewSummary:
                         break
 
             if best_patch:
-                if max_intersection < review.end_line - review.start_line + 1:
+                # Check if the comment range fits entirely within the patch
+                comment_fully_in_patch = (
+                    review.start_line >= best_patch.start_line
+                    and review.end_line <= best_patch.end_line
+                )
+
+                if comment_fully_in_patch:
+                    # Comment is fully within patch - keep Claude's original line numbers
+                    pass
+                elif max_intersection > 0:
+                    # Comment partially overlaps - clamp to patch boundaries
+                    original_start = review.start_line
+                    original_end = review.end_line
+                    review.start_line = max(review.start_line, best_patch.start_line)
+                    review.end_line = min(review.end_line, best_patch.end_line)
+
+                    if review.start_line != original_start or review.end_line != original_end:
+                        review.comment = (
+                            f"> Note: Comment range adjusted to fit within patch boundaries. "
+                            f"Original lines [{original_start}-{original_end}]\n\n{review.comment}"
+                        )
+                else:
+                    # No overlap - map to entire patch as fallback
                     review.comment = (
                         f"> Note: This review was outside of the patch, so it was mapped to the patch with the greatest overlap. "
                         f"Original lines [{review.start_line}-{review.end_line}]\n\n{review.comment}"
@@ -254,7 +276,10 @@ class ReviewSummary:
 
             if debug:
                 print(
-                    f"Stored comment for line range {current_start_line}-{current_end_line}: {current_comment.strip()}"
+                    f"✓ Stored comment for line range {review.start_line}-{review.end_line}"
+                    + (f" (original: {current_start_line}-{current_end_line})"
+                       if review.start_line != current_start_line or review.end_line != current_end_line
+                       else "")
                 )
 
         return review
