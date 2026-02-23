@@ -228,8 +228,8 @@ def main():
     event_data = generate_event_json(owner_repo, pr_number)
 
     # Save to file
-    output_file = Path("test") / f"pr_{pr_number}_event.json"
-    output_file.parent.mkdir(exist_ok=True)
+    output_file = f"pr_{pr_number}_event.json"
+    # output_file.parent.mkdir(exist_ok=True)
 
     with open(output_file, "w") as f:
         json.dump(event_data, f, indent=2)

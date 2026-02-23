@@ -3,73 +3,73 @@
   "number": 2,
   "pull_request": {
     "number": 2,
-    "title": "added more functionality",
-    "body": "More funtionalities added.",
+    "title": "updates to calculator",
+    "body": "\n<!-- This is an auto-generated comment: release notes by Dev Tools AI -->\n### Release notes by Dev Tools AI\n\n## Release Notes\n\n- **New Feature:** Added 8 scientific operations \u2014 sine, cosine, tangent, logarithm, natural log, exponential, square, and cube \u2014 expanding the calculator to a full scientific calculator with 20 menu options.\n- **New Feature:** Graceful error handling for non-positive inputs to logarithm and natural log functions.\n- **Documentation:** Updated README to reflect scientific calculator branding, new operations, updated menu, and revised test counts.\n- **Test:** Added `TestScientificOperations` class with 20 new tests covering all scientific functions.\n<!-- end of auto-generated comment: release notes by Dev Tools AI -->",
     "state": "open",
     "draft": false,
     "merged": false,
     "base": {
       "ref": "main",
-      "sha": "19a7abbc3f1281e47332573097c8be8812ceaffc",
+      "sha": "a311ab81896177efae03e05b19b11f0b9cf75865",
       "repo": {
         "name": "test-pr-review",
-        "full_name": "akshukla1992/test-pr-review",
+        "full_name": "Stellantis-ADX/test-pr-review",
         "owner": {
-          "login": "akshukla1992",
-          "type": "User"
+          "login": "Stellantis-ADX",
+          "type": "Organization"
         },
         "private": true,
-        "html_url": "https://github.com/akshukla1992/test-pr-review",
+        "html_url": "https://github.com/Stellantis-ADX/test-pr-review",
         "default_branch": "main"
       }
     },
     "head": {
       "ref": "dev",
-      "sha": "8b6648945edc4ef15c146ac960ee9314daa35c9e",
+      "sha": "33bbd0857a51088070610b4fb8c217659399f1f2",
       "repo": {
         "name": "test-pr-review",
-        "full_name": "akshukla1992/test-pr-review",
+        "full_name": "Stellantis-ADX/test-pr-review",
         "owner": {
-          "login": "akshukla1992",
-          "type": "User"
+          "login": "Stellantis-ADX",
+          "type": "Organization"
         },
         "private": true,
-        "html_url": "https://github.com/akshukla1992/test-pr-review"
+        "html_url": "https://github.com/Stellantis-ADX/test-pr-review"
       }
     },
     "user": {
       "login": "akshukla1992",
       "type": "User"
     },
-    "additions": 395,
-    "deletions": 52,
-    "changed_files": 3,
-    "commits": 1,
-    "html_url": "https://github.com/akshukla1992/test-pr-review/pull/2",
-    "diff_url": "https://github.com/akshukla1992/test-pr-review/pull/2.diff",
-    "patch_url": "https://github.com/akshukla1992/test-pr-review/pull/2.patch",
+    "additions": 250,
+    "deletions": 34,
+    "changed_files": 4,
+    "commits": 2,
+    "html_url": "https://github.com/Stellantis-ADX/test-pr-review/pull/2",
+    "diff_url": "https://github.com/Stellantis-ADX/test-pr-review/pull/2.diff",
+    "patch_url": "https://github.com/Stellantis-ADX/test-pr-review/pull/2.patch",
     "_links": {
       "html": {
-        "href": "https://github.com/akshukla1992/test-pr-review/pull/2"
+        "href": "https://github.com/Stellantis-ADX/test-pr-review/pull/2"
       },
       "comments": {
-        "href": "https://api.github.com/repos/akshukla1992/test-pr-review/issues/2/comments"
+        "href": "https://api.github.com/repos/Stellantis-ADX/test-pr-review/issues/2/comments"
       },
       "commits": {
-        "href": "https://api.github.com/repos/akshukla1992/test-pr-review/pulls/2/commits"
+        "href": "https://api.github.com/repos/Stellantis-ADX/test-pr-review/pulls/2/commits"
       }
     }
   },
   "repository": {
     "name": "test-pr-review",
-    "full_name": "akshukla1992/test-pr-review",
+    "full_name": "Stellantis-ADX/test-pr-review",
     "owner": {
-      "login": "akshukla1992",
-      "type": "User"
+      "login": "Stellantis-ADX",
+      "type": "Organization"
     },
     "private": true,
-    "html_url": "https://github.com/akshukla1992/test-pr-review",
-    "url": "https://api.github.com/repos/akshukla1992/test-pr-review",
+    "html_url": "https://github.com/Stellantis-ADX/test-pr-review",
+    "url": "https://api.github.com/repos/Stellantis-ADX/test-pr-review",
     "default_branch": "main"
   },
   "sender": {

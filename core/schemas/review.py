@@ -126,7 +126,7 @@ class ReviewSummary:
         # 5-15:
         # \n20-30:
         # \t100-200:
-        line_number_range_regex = r"(?:^|\s)(\d+)-(\d+):\s*$"
+        line_number_range_regex = r"(?:^|\s)(\d+)\s*-\s*(\d+):\s*$"
         comment_separator = "---"
 
         state = ReviewState()
@@ -161,7 +161,7 @@ class ReviewSummary:
         )
         self.add_review_to_buffer(review)
 
-        match = re.search(r"(?:^|\s)(\d+)-(\d+):\s*$", line)
+        match = re.search(r"(?:^|\s)(\d+)\s*-\s*(\d+):\s*$", line)
         state.current_start_line = int(match.group(1))
         state.current_end_line = int(match.group(2))
         state.current_comment = ""

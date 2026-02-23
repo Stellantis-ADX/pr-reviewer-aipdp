@@ -31,8 +31,8 @@ pull request and review comments.
   and reduce noise by tracking changed files between commits and the base of the
   pull request.
 - **"Light" model for summary**: Designed to be used with a "light"
-  summarization model (e.g. `mistral-small`) and a "heavy" review model (e.g.
-  `mistral-large`). _For best results, use `mistral-large` as the "heavy" model, as thorough
+  summarization model (e.g. `claude-sonnet`) and a "heavy" review model (e.g.
+  `claude-opus`). _For best results, use `claude-opus` as the "heavy" model, as thorough
   code review needs strong reasoning abilities._
 - **Chat with bot**: Supports conversation with the bot in the context of lines
   of code or entire files, useful for providing context, generating test cases,
@@ -106,7 +106,7 @@ jobs:
           python-version: '3.11'
 
       - name: "AI PR Reviewer"
-        uses: Stellantis-ADX/pr-reviewer-ai@master
+        uses: Stellantis-ADX/pr-reviewer-aidp@main
         env:
           GITHUB_TOKEN: ${{ steps.create-github-app-token.outputs.token }}
         with:
@@ -125,11 +125,11 @@ jobs:
 - `GITHUB_TOKEN`: This should already be available to the GitHub Action
   environment. This is used to add comments to the pull request.
 
-### Models: `mistral-small` and `mistral-large`
+### Models: `claude-sonnet` and `claude-opus`
 
-Recommend using `mistral-small` for lighter tasks such as summarizing the
-changes (`mistral_light_model` in configuration) and `mistral-large` for more complex
-review and commenting tasks (`mistral_heavy_model` in configuration).
+Recommend using `claude-sonnet` for lighter tasks such as summarizing the
+changes (`mistral_light_model` in configuration) and `claude-opus` for more complex
+review and commenting tasks (`claude-opus` in configuration).
 
 Costs: as all our models runs internally, there is no cost associated with the usage of the models.
 

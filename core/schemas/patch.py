@@ -160,28 +160,20 @@ def parse_patch(patch: str, patch_lines: Box):
     if lines and lines[-1] == "":
         lines.pop()
 
-    # Skip annotations for the first 3 and last 3 lines, it's a context line which provided by Github
-    skip_start = 3
-    skip_end = 3
-
-    current_line = 0
-
-    removal_only = not any(line.startswith("+") for line in lines)
+    # ALWAYS annotate ALL lines with line numbers for clarity
+    # Use markers to distinguish added lines from context lines
 
     for line in lines:
-        current_line += 1
         if line.startswith("-"):
             old_hunk_lines.append(line[1:])
         elif line.startswith("+"):
-            new_hunk_lines.append(f"{new_line}: {line[1:]}")
+            # Added line - mark with [NEW]
+            new_hunk_lines.append(f"{new_line}: [NEW] {line[1:]}")
             new_line += 1
         else:
-            # context line
+            # Context line - always annotate with line number
             old_hunk_lines.append(line)
-            if removal_only or (skip_start < current_line <= len(lines) - skip_end):
-                new_hunk_lines.append(f"{new_line}: {line}")
-            else:
-                new_hunk_lines.append(line)
+            new_hunk_lines.append(f"{new_line}: {line}")
             new_line += 1
 
     return {
