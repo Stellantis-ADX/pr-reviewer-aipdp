@@ -99,6 +99,11 @@ class ClaudeBot(Bot):
             if self.options.debug:
                 info(f"Sending message to Claude ({self.api['model']})")
                 info(f"Message length: {len(message)} characters")
+                # Log the full prompt for debugging
+                info(f"[DEBUG] Full prompt being sent to Claude:")
+                info(f"--- PROMPT START ---")
+                info(message[:5000] + "..." if len(message) > 5000 else message)
+                info(f"--- PROMPT END (showing first 5000 chars) ---")
 
             # Construct the request payload for Databricks serving endpoint
             # Databricks expects the Anthropic Messages API format
@@ -170,6 +175,9 @@ class ClaudeBot(Bot):
             response_text = response_text[5:]
 
         if self.options.debug:
-            info(f"Claude response preview: {response_text[:200]}...")
+            info(f"[DEBUG] Full Claude response:")
+            info(f"--- RESPONSE START ---")
+            info(response_text[:3000] + "..." if len(response_text) > 3000 else response_text)
+            info(f"--- RESPONSE END (showing first 3000 chars) ---")
 
         return AiResponse(message=response_text)

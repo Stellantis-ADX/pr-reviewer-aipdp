@@ -108,8 +108,10 @@ class FilteredFile(BaseModel):
         return Patch(
             start_line=patch_lines.new_hunk.start_line,
             end_line=patch_lines.new_hunk.end_line,
-            patch_str=f"\n---new_hunk---\n```\n{hunks.new_hunk}\n```\n"
-            f"\n---old_hunk---\n```\n{hunks.old_hunk}\n```\n",
+            patch_str=f"\n### NEW CODE TO REVIEW (lines {patch_lines.new_hunk.start_line}-{patch_lines.new_hunk.end_line}):\n"
+            f"---new_hunk---\n```\n{hunks.new_hunk}\n```\n"
+            f"\n### OLD CODE FOR CONTEXT (replaced code):\n"
+            f"---old_hunk---\n```\n{hunks.old_hunk}\n```\n",
         )
 
     @classmethod
