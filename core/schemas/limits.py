@@ -25,12 +25,17 @@ class TokenLimits:
             self.response_tokens = 4000
         # Claude models (Databricks)
         elif model in ("claude-opus-4-6", "databricks-claude-opus-4-6"):
-            self.max_tokens = 200000
-            self.response_tokens = 16000
+            self.max_tokens = 32600
+            self.response_tokens = 4000
             self.knowledge_cut_off = "2025-01-01"
-        elif model in ("claude-sonnet-4-5", "databricks-claude-sonnet-4-5"):
-            self.max_tokens = 200000
-            self.response_tokens = 8000
+        elif model in ("databricks-claude-sonnet-4-6", "claude-sonnet-4-6"):
+            self.max_tokens = 8000
+            self.response_tokens = 1000
+            self.knowledge_cut_off = "2025-01-01"
+        # Meta Llama models (Databricks)
+        elif model in ("databricks-llama-4-maverick"):
+            self.max_tokens = 32600  # Llama 4 context length
+            self.response_tokens = 4000  # Large response capability
             self.knowledge_cut_off = "2025-01-01"
         elif model.startswith("claude-"):
             # Generic Claude model fallback
