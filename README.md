@@ -14,8 +14,8 @@ ensuring that no data is sent to OpenAI servers.
 ## Overview
 
 DevTools `pr-reviewer-ai` is an AI-based code reviewer and summarizer for
-GitHub pull requests using Mistral's `large` and `small` models, deployed on a custom cluster
-or in Azure.It is designed to be used as a GitHub Action and can be configured to run on every
+GitHub pull requests using `large` and `small` LLM models, deployed on a custom cluster
+or in Databricks.It is designed to be used as a GitHub Action and can be configured to run on every
 pull request and review comments.
 
 ## Reviewer Features:
@@ -110,13 +110,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.create-github-app-token.outputs.token }}
         with:
-          light_model_token_azure: 'token'
-          heavy_model_token_azure: 'token'
-          allow_empty_review: 'false'
-          less_spammy: 'false'
-          debug: 'false'
-          review_simple_changes: 'false'
-          review_comment_lgtm: 'false'
+          databricks_base_url: ${{ secrets.DATABRICKS_BASE_URL }}
+          databricks_token: ${{ secrets.DATABRICKS_TOKEN }}
+          light_model_name_claude: "databricks-claude-sonnet-4-6"
+          heavy_model_name_claude: "databricks-claude-opus-4-6"
+          LANGFUSE_ENABLED: "true"
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
+          allow_empty_review: "false"
+          less_spammy: "false"
+          debug: "false"
+          review_simple_changes: "false"
+          review_comment_lgtm: "false"
 
 ```
 
@@ -124,6 +130,12 @@ jobs:
 
 - `GITHUB_TOKEN`: This should already be available to the GitHub Action
   environment. This is used to add comments to the pull request.
+- `databricks_base_url`: Add configuration to repository settings -> secrets and variables -> actions->repository secrets. 
+- `databricks_token`: Add configuration to repository settings -> secrets and variables -> actions->repository secrets.
+- `LANGFUSE_PUBLIC_KEY`: Add configuration to repository settings -> secrets and variables -> actions->repository secrets.
+- `LANGFUSE_SECRET_KEY`: Add configuration to repository settings -> secrets and variables -> actions->repository secrets.
+- `LANGFUSE_HOST`: Add configuration to repository settings -> secrets and variables -> actions->repository secrets.
+
 
 ### Models: `claude-sonnet` and `claude-opus`
 
