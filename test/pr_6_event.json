@@ -1,0 +1,79 @@
+{
+  "action": "opened",
+  "number": 6,
+  "pull_request": {
+    "number": 6,
+    "title": "Dev updates",
+    "body": "\n<!-- This is an auto-generated comment: release notes by Dev Tools AI -->\n### Release notes by Dev Tools AI\n\n- **New Feature**: Added 8 scientific calculator operations \u2014 sin, cos, tan, log10, ln, e^x, square, and cube \u2014 expanding the menu to 20 options.\n- **Documentation**: Updated README to reflect new scientific operations, revised usage instructions, error handling notes for non-positive logarithm inputs, and updated test count from 36 to 56.\n- **Test**: Added `TestScientificOperations` test class with comprehensive coverage for all new scientific functions, including edge cases and error handling.\n<!-- end of auto-generated comment: release notes by Dev Tools AI -->",
+    "state": "open",
+    "draft": false,
+    "merged": false,
+    "base": {
+      "ref": "main",
+      "sha": "a311ab81896177efae03e05b19b11f0b9cf75865",
+      "repo": {
+        "name": "test-pr-review",
+        "full_name": "Stellantis-ADX/test-pr-review",
+        "owner": {
+          "login": "Stellantis-ADX",
+          "type": "Organization"
+        },
+        "private": true,
+        "html_url": "https://github.com/Stellantis-ADX/test-pr-review",
+        "default_branch": "main"
+      }
+    },
+    "head": {
+      "ref": "dev",
+      "sha": "1bdbb4ff920812a71dfb8161fb52aae723b4ef5e",
+      "repo": {
+        "name": "test-pr-review",
+        "full_name": "Stellantis-ADX/test-pr-review",
+        "owner": {
+          "login": "Stellantis-ADX",
+          "type": "Organization"
+        },
+        "private": true,
+        "html_url": "https://github.com/Stellantis-ADX/test-pr-review"
+      }
+    },
+    "user": {
+      "login": "akshukla1992",
+      "type": "User"
+    },
+    "additions": 534,
+    "deletions": 141,
+    "changed_files": 5,
+    "commits": 4,
+    "html_url": "https://github.com/Stellantis-ADX/test-pr-review/pull/6",
+    "diff_url": "https://github.com/Stellantis-ADX/test-pr-review/pull/6.diff",
+    "patch_url": "https://github.com/Stellantis-ADX/test-pr-review/pull/6.patch",
+    "_links": {
+      "html": {
+        "href": "https://github.com/Stellantis-ADX/test-pr-review/pull/6"
+      },
+      "comments": {
+        "href": "https://api.github.com/repos/Stellantis-ADX/test-pr-review/issues/6/comments"
+      },
+      "commits": {
+        "href": "https://api.github.com/repos/Stellantis-ADX/test-pr-review/pulls/6/commits"
+      }
+    }
+  },
+  "repository": {
+    "name": "test-pr-review",
+    "full_name": "Stellantis-ADX/test-pr-review",
+    "owner": {
+      "login": "Stellantis-ADX",
+      "type": "Organization"
+    },
+    "private": true,
+    "html_url": "https://github.com/Stellantis-ADX/test-pr-review",
+    "url": "https://api.github.com/repos/Stellantis-ADX/test-pr-review",
+    "default_branch": "main"
+  },
+  "sender": {
+    "login": "akshukla1992",
+    "type": "User"
+  }
+}

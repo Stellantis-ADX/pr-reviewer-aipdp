@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import os
 import re
 import traceback
 from typing import Tuple
@@ -293,6 +294,19 @@ def code_review(light_bot: Bot, heavy_bot: Bot, options: Options, prompts: Promp
     commenter = GithubCommentManager()
     pr_info = PRInfo()
     pr_description = PRDescription()
+
+    # Set PR context for Langfuse tracing (if bots support it)
+    repo_name = os.getenv("GITHUB_REPOSITORY", "unknown")
+    if hasattr(light_bot, 'set_pr_context'):
+        light_bot.set_pr_context(
+            pr_number=pr_info.number,
+            repository=repo_name
+        )
+    if hasattr(heavy_bot, 'set_pr_context'):
+        heavy_bot.set_pr_context(
+            pr_number=pr_info.number,
+            repository=repo_name
+        )
 
     if pr_description.user_ask_to_ignore:
         print("Skipped: description contains ignore_keyword")

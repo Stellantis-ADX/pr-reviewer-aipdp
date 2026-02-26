@@ -10,6 +10,17 @@ from core.bots.bot import SYSTEM_MESSAGE, AiResponse, Bot, ModelOptions
 from core.schemas.limits import TokenLimits
 from core.schemas.options import Options
 
+# Import Langfuse for LLM observability
+try:
+    from langfuse import Langfuse
+    from langfuse.types import TraceContext
+    LANGFUSE_AVAILABLE = True
+except ImportError:
+    LANGFUSE_AVAILABLE = False
+    info("Langfuse not installed. Install with: pip install langfuse")
+    Langfuse = None
+    TraceContext = None
+
 
 class ClaudeOptions(ModelOptions):
     """Options for Claude models hosted on Databricks."""
@@ -82,11 +93,60 @@ class ClaudeBot(Bot):
             timeout=180.0
         )
 
+        # Initialize Langfuse for observability (v3.14.5 API)
+        self.langfuse = None
+        langfuse_enabled = os.getenv("LANGFUSE_ENABLED", "false").lower() == "true"
+
+        if LANGFUSE_AVAILABLE and langfuse_enabled:
+            langfuse_public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
+            langfuse_secret_key = os.getenv("LANGFUSE_SECRET_KEY")
+            langfuse_host = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+
+            if langfuse_public_key and langfuse_secret_key:
+                try:
+                    self.langfuse = Langfuse(
+                        public_key=langfuse_public_key,
+                        secret_key=langfuse_secret_key,
+                        host=langfuse_host
+                    )
+                    info(f"Langfuse tracing enabled for model: {claude_options.model}")
+                except Exception as e:
+                    info(f"Failed to initialize Langfuse: {e}")
+                    self.langfuse = None
+            else:
+                info("Langfuse credentials found but LANGFUSE_ENABLED not set to 'true'")
+
+        # Store PR context for Langfuse tracing
+        self.pr_context = {
+            "pr_number": None,
+            "repository": os.getenv("GITHUB_REPOSITORY", "unknown")
+        }
+
         info(f"Initialized Claude bot with model: {claude_options.model}")
         info(f"Using Databricks endpoint: {base_url}")
 
-    def chat(self, message: str) -> AiResponse:
-        """Send a message to Claude via Databricks serving endpoint."""
+    def set_pr_context(self, pr_number: int, repository: str = None):
+        """Set PR context for Langfuse tracing."""
+        self.pr_context["pr_number"] = pr_number
+        if repository:
+            self.pr_context["repository"] = repository
+
+    def chat(
+        self,
+        message: str,
+        files_reviewed: int = None,
+        comments_generated: int = None,
+        lines_of_code_reviewed: int = None
+    ) -> AiResponse:
+        """
+        Send a message to Claude via Databricks serving endpoint.
+
+        Args:
+            message: The prompt to send to Claude
+            files_reviewed: Number of files reviewed (for Langfuse tracking)
+            comments_generated: Number of comments generated (for Langfuse tracking)
+            lines_of_code_reviewed: Total lines of code reviewed (for Langfuse tracking)
+        """
         start = time.time()
 
         if not message:
@@ -94,6 +154,32 @@ class ClaudeBot(Bot):
 
         response = None
         response_text = ""
+        usage_data = {}
+
+        # Prepare Langfuse tracking data
+        langfuse_trace_context = None
+        langfuse_event_name = None
+        if self.langfuse:
+            try:
+                # Get PR context
+                pr_number = self.pr_context.get("pr_number", "unknown")
+                repo_name = self.pr_context.get("repository", "unknown")
+
+                # Generate unique trace ID using Langfuse method
+                trace_id = self.langfuse.create_trace_id(seed=f"pr-{repo_name}-{pr_number}")
+
+                # Create TraceContext (it's just a TypedDict)
+                langfuse_trace_context = {"trace_id": trace_id}
+
+                # Create unique generation name with PR context and timestamp
+                repo_short = repo_name.split('/')[-1] if '/' in repo_name else repo_name
+                timestamp_ms = int(start * 1000)
+                langfuse_event_name = f"{repo_short}-pr{pr_number}-{self.api['model']}-{timestamp_ms}"
+
+                if self.options.debug:
+                    info(f"Langfuse trace_id: {trace_id}")
+            except Exception as e:
+                info(f"Failed to prepare Langfuse tracking: {e}")
 
         try:
             if self.options.debug:
@@ -131,6 +217,10 @@ class ClaudeBot(Bot):
                 json=payload
             )
 
+            # Capture time to first token (when response headers arrive)
+            ttft_time = time.time()
+            ttft_ms = (ttft_time - start) * 1000
+
             # Check for errors
             http_response.raise_for_status()
 
@@ -143,32 +233,104 @@ class ClaudeBot(Bot):
             # Extract the text from the response
             # Databricks returns OpenAI-compatible format: choices[0].message.content
             if "choices" in response_json and len(response_json["choices"]) > 0:
-                message = response_json["choices"][0].get("message", {})
-                response_text = message.get("content", "")
+                message_data = response_json["choices"][0].get("message", {})
+                response_text = message_data.get("content", "")
 
-                if self.options.debug:
-                    info(f"Claude response length: {len(response_text)} characters")
-                    if "usage" in response_json:
-                        info(f"Prompt tokens: {response_json['usage'].get('prompt_tokens', 0)}")
-                        info(f"Completion tokens: {response_json['usage'].get('completion_tokens', 0)}")
-                        info(f"Total tokens: {response_json['usage'].get('total_tokens', 0)}")
+                # Extract usage data for Langfuse
+                if "usage" in response_json:
+                    usage_data = {
+                        "input": response_json['usage'].get('prompt_tokens', 0),
+                        "output": response_json['usage'].get('completion_tokens', 0),
+                        "total": response_json['usage'].get('total_tokens', 0)
+                    }
+
+                    if self.options.debug:
+                        info(f"Claude response length: {len(response_text)} characters")
+                        info(f"Prompt tokens: {usage_data['input']}")
+                        info(f"Completion tokens: {usage_data['output']}")
+                        info(f"Total tokens: {usage_data['total']}")
             else:
                 info("Claude API returned empty content")
 
         except httpx.HTTPStatusError as e:
-            info(f"Failed to send message to Claude API: HTTP {e.response.status_code}")
-            info(f"Error details: {e.response.text}")
+            error_msg = f"HTTP {e.response.status_code}: {e.response.text}"
+            info(f"Failed to send message to Claude API: {error_msg}")
+
+            # Log error to Langfuse as generation with ERROR level
+            if langfuse_trace_context and self.langfuse:
+                try:
+                    generation = self.langfuse.start_observation(
+                        as_type="generation",
+                        trace_context=langfuse_trace_context,
+                        name=f"{langfuse_event_name}-error",
+                        input=message[:500],
+                        output=error_msg,
+                        model=self.api['model'],
+                        model_parameters={
+                            "temperature": self.api["temperature"],
+                            "max_tokens": self.api["max_response_tokens"]
+                        },
+                        metadata={
+                            "error": error_msg,
+                            "error_type": "HTTPStatusError",
+                            "status_code": e.response.status_code,
+                            "latency_ms": (time.time() - start) * 1000,
+                            "repository": self.pr_context.get("repository", "unknown"),
+                            "pr_number": str(self.pr_context.get("pr_number", "unknown"))
+                        },
+                        level="ERROR",
+                        status_message=error_msg
+                    )
+                    generation.end()
+                    self.langfuse.flush()
+                except Exception as log_error:
+                    if self.options.debug:
+                        info(f"Langfuse error logging failed: {log_error}")
+
             return AiResponse(message="")
 
         except Exception as e:
-            info(f"Failed to send message to Claude API: {e}")
-            info(f"Error details: {str(e)}")
+            error_msg = str(e)
+            info(f"Failed to send message to Claude API: {error_msg}")
+
+            # Log error to Langfuse as generation with ERROR level
+            if langfuse_trace_context and self.langfuse:
+                try:
+                    generation = self.langfuse.start_observation(
+                        as_type="generation",
+                        trace_context=langfuse_trace_context,
+                        name=f"{langfuse_event_name}-error",
+                        input=message[:500],
+                        output=error_msg,
+                        model=self.api['model'],
+                        model_parameters={
+                            "temperature": self.api["temperature"],
+                            "max_tokens": self.api["max_response_tokens"]
+                        },
+                        metadata={
+                            "error": error_msg,
+                            "error_type": type(e).__name__,
+                            "latency_ms": (time.time() - start) * 1000,
+                            "repository": self.pr_context.get("repository", "unknown"),
+                            "pr_number": str(self.pr_context.get("pr_number", "unknown"))
+                        },
+                        level="ERROR",
+                        status_message=error_msg
+                    )
+                    generation.end()
+                    self.langfuse.flush()
+                except Exception as log_error:
+                    if self.options.debug:
+                        info(f"Langfuse error logging failed: {log_error}")
+
             return AiResponse(message="")
 
         end = time.time()
         elapsed_ms = (end - start) * 1000
 
         info(f"Claude API response time: {elapsed_ms:.2f} ms")
+        if self.options.debug:
+            info(f"Time to first token (TTFT): {ttft_ms:.2f} ms")
 
         # Clean up response text (remove common prefixes)
         if response_text.startswith("with "):
@@ -179,5 +341,65 @@ class ClaudeBot(Bot):
             info(f"--- RESPONSE START ---")
             info(response_text[:3000] + "..." if len(response_text) > 3000 else response_text)
             info(f"--- RESPONSE END (showing first 3000 chars) ---")
+
+        # Log to Langfuse (v3.14.5 API) - Use generation for cost tracking
+        if langfuse_trace_context and self.langfuse:
+            try:
+                # Create metadata with all relevant information
+                metadata = {
+                    "repository": self.pr_context.get("repository", "unknown"),
+                    "pr_number": str(self.pr_context.get("pr_number", "unknown")),
+                    "latency_ms": elapsed_ms,
+                    "ttft_ms": ttft_ms,  # Time to first token
+                    "input_length": len(message),
+                    "output_length": len(response_text)
+                }
+
+                # Add review metrics if provided
+                if files_reviewed is not None:
+                    metadata["files_reviewed"] = files_reviewed
+                if comments_generated is not None:
+                    metadata["comments_generated"] = comments_generated
+                if lines_of_code_reviewed is not None:
+                    metadata["lines_of_code_reviewed"] = lines_of_code_reviewed
+
+                # Prepare usage details for cost calculation
+                usage_details = None
+                if usage_data:
+                    usage_details = {
+                        "input": usage_data.get("input", 0),
+                        "output": usage_data.get("output", 0),
+                        "total": usage_data.get("total", 0)
+                    }
+
+                # Create generation (not event) for proper cost tracking
+                generation = self.langfuse.start_observation(
+                    as_type="generation",
+                    trace_context=langfuse_trace_context,
+                    name=langfuse_event_name,
+                    input=message[:1000],  # Truncate to avoid huge payloads
+                    output=response_text[:1000],
+                    model=self.api['model'],
+                    model_parameters={
+                        "temperature": self.api["temperature"],
+                        "max_tokens": self.api["max_response_tokens"]
+                    },
+                    usage_details=usage_details,
+                    metadata=metadata,
+                    level="DEFAULT"
+                )
+
+                # End the generation
+                generation.end()
+
+                # Flush to ensure data is sent immediately
+                self.langfuse.flush()
+
+                if self.options.debug:
+                    info(f"Langfuse generation logged successfully (ID: {generation.id if hasattr(generation, 'id') else 'N/A'})")
+
+            except Exception as e:
+                # Don't fail the request if Langfuse logging fails
+                info(f"Langfuse logging failed (non-critical): {e}")
 
         return AiResponse(message=response_text)
