@@ -14,7 +14,7 @@ ACTION_INPUTS = (
 BOT_NAME = "@devtoolsai"
 BOT_NAME_NO_TAG = "Dev Tools AI"
 IGNORE_KEYWORD = f"{BOT_NAME}: ignore"
-PR_LINES_LIMIT = 1000
+PR_LINES_LIMIT = 2000
 FEEDBACK_EMAIL = "devtools@stellantis.com"
 DISMISSAL_MESSAGE = (
     "🤖🙂 Review deleted, smiles undefeated! 🙂🤖 (option less_spammy ✅)"
