@@ -259,12 +259,13 @@ class ClaudeBot(Bot):
             # Log error to Langfuse as generation with ERROR level
             if langfuse_trace_context and self.langfuse:
                 try:
+                    truncate_limit = int(os.getenv("LANGFUSE_TRUNCATE_LIMIT", "500"))
                     generation = self.langfuse.start_observation(
                         as_type="generation",
                         trace_context=langfuse_trace_context,
                         name=f"{langfuse_event_name}-error",
-                        input=message[:500],
-                        output=error_msg,
+                        input=message[:truncate_limit] if message else "",
+                        output=error_msg[:truncate_limit] if error_msg else "",
                         model=self.api['model'],
                         model_parameters={
                             "temperature": self.api["temperature"],
@@ -296,12 +297,13 @@ class ClaudeBot(Bot):
             # Log error to Langfuse as generation with ERROR level
             if langfuse_trace_context and self.langfuse:
                 try:
+                    truncate_limit = int(os.getenv("LANGFUSE_TRUNCATE_LIMIT", "500"))
                     generation = self.langfuse.start_observation(
                         as_type="generation",
                         trace_context=langfuse_trace_context,
                         name=f"{langfuse_event_name}-error",
-                        input=message[:500],
-                        output=error_msg,
+                        input=message[:truncate_limit] if message else "",
+                        output=error_msg[:truncate_limit] if error_msg else "",
                         model=self.api['model'],
                         model_parameters={
                             "temperature": self.api["temperature"],
@@ -372,13 +374,16 @@ class ClaudeBot(Bot):
                         "total": usage_data.get("total", 0)
                     }
 
+                # Get truncation limit from environment (default 500 for large code reviews)
+                truncate_limit = int(os.getenv("LANGFUSE_TRUNCATE_LIMIT", "500"))
+
                 # Create generation (not event) for proper cost tracking
                 generation = self.langfuse.start_observation(
                     as_type="generation",
                     trace_context=langfuse_trace_context,
                     name=langfuse_event_name,
-                    input=message[:1000],  # Truncate to avoid huge payloads
-                    output=response_text[:1000],
+                    input=message[:truncate_limit] if message else "",
+                    output=response_text[:truncate_limit] if response_text else "",
                     model=self.api['model'],
                     model_parameters={
                         "temperature": self.api["temperature"],
