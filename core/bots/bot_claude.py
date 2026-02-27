@@ -377,13 +377,16 @@ class ClaudeBot(Bot):
                 # Get truncation limit from environment (default 500 for large code reviews)
                 truncate_limit = int(os.getenv("LANGFUSE_TRUNCATE_LIMIT", "500"))
 
+                # Option to disable content logging entirely (only log metadata)
+                log_content = os.getenv("LANGFUSE_LOG_CONTENT", "true").lower() == "true"
+
                 # Create generation (not event) for proper cost tracking
                 generation = self.langfuse.start_observation(
                     as_type="generation",
                     trace_context=langfuse_trace_context,
                     name=langfuse_event_name,
-                    input=message[:truncate_limit] if message else "",
-                    output=response_text[:truncate_limit] if response_text else "",
+                    input=message[:truncate_limit] if (message and log_content) else None,
+                    output=response_text[:truncate_limit] if (response_text and log_content) else None,
                     model=self.api['model'],
                     model_parameters={
                         "temperature": self.api["temperature"],
@@ -398,10 +401,18 @@ class ClaudeBot(Bot):
                 generation.end()
 
                 # Flush to ensure data is sent immediately
-                self.langfuse.flush()
-
-                if self.options.debug:
-                    info(f"Langfuse generation logged successfully (ID: {generation.id if hasattr(generation, 'id') else 'N/A'})")
+                # Wrap in try-except to handle 403 errors gracefully
+                try:
+                    self.langfuse.flush()
+                    if self.options.debug:
+                        info(f"Langfuse generation logged successfully (ID: {generation.id if hasattr(generation, 'id') else 'N/A'})")
+                except Exception as flush_error:
+                    # 403 errors indicate payload too large or rate limits
+                    error_msg = str(flush_error)
+                    if "403" in error_msg or "Forbidden" in error_msg:
+                        info(f"Langfuse: Skipping due to 403 error (payload/rate limit). Set LANGFUSE_LOG_CONTENT=false to disable content logging.")
+                    else:
+                        info(f"Langfuse flush warning: {error_msg}")
 
             except Exception as e:
                 # Don't fail the request if Langfuse logging fails
