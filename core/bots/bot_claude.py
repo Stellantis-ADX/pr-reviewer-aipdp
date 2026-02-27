@@ -131,6 +131,24 @@ class ClaudeBot(Bot):
         if repository:
             self.pr_context["repository"] = repository
 
+    def flush_langfuse(self):
+        """Manually flush any pending Langfuse data."""
+        if self.langfuse:
+            try:
+                self.langfuse.flush()
+                if self.options.debug:
+                    info("Langfuse: Flushed all pending data")
+            except Exception as e:
+                info(f"Langfuse flush warning: {e}")
+
+    def __del__(self):
+        """Cleanup: Flush Langfuse data on bot destruction."""
+        if hasattr(self, 'langfuse') and self.langfuse:
+            try:
+                self.langfuse.flush()
+            except:
+                pass  # Silent cleanup
+
     def chat(
         self,
         message: str,
@@ -400,19 +418,42 @@ class ClaudeBot(Bot):
                 # End the generation
                 generation.end()
 
-                # Flush to ensure data is sent immediately
-                # Wrap in try-except to handle 403 errors gracefully
-                try:
-                    self.langfuse.flush()
-                    if self.options.debug:
-                        info(f"Langfuse generation logged successfully (ID: {generation.id if hasattr(generation, 'id') else 'N/A'})")
-                except Exception as flush_error:
-                    # 403 errors indicate payload too large or rate limits
-                    error_msg = str(flush_error)
-                    if "403" in error_msg or "Forbidden" in error_msg:
-                        info(f"Langfuse: Skipping due to 403 error (payload/rate limit). Set LANGFUSE_LOG_CONTENT=false to disable content logging.")
-                    else:
-                        info(f"Langfuse flush warning: {error_msg}")
+                # Flush strategy: immediate, batch, or manual
+                flush_strategy = os.getenv("LANGFUSE_FLUSH_STRATEGY", "batch")
+
+                if flush_strategy == "immediate":
+                    # Flush immediately (old behavior, may cause 403)
+                    try:
+                        self.langfuse.flush()
+                        if self.options.debug:
+                            info(f"Langfuse generation logged (immediate flush)")
+                    except Exception as flush_error:
+                        error_msg = str(flush_error)
+                        if "403" in error_msg or "Forbidden" in error_msg:
+                            info(f"Langfuse 403 error. Try LANGFUSE_FLUSH_STRATEGY=batch or LANGFUSE_LOG_CONTENT=false")
+                        else:
+                            info(f"Langfuse flush warning: {error_msg}")
+
+                elif flush_strategy == "batch":
+                    # Let Langfuse batch internally (default, recommended)
+                    # Only flush periodically to avoid 403
+                    if not hasattr(self, '_langfuse_call_count'):
+                        self._langfuse_call_count = 0
+                    self._langfuse_call_count += 1
+
+                    # Flush every N calls (configurable)
+                    batch_size = int(os.getenv("LANGFUSE_BATCH_SIZE", "10"))
+                    if self._langfuse_call_count % batch_size == 0:
+                        try:
+                            self.langfuse.flush()
+                            if self.options.debug:
+                                info(f"Langfuse batch flushed ({self._langfuse_call_count} calls)")
+                        except Exception as flush_error:
+                            info(f"Langfuse batch flush warning: {flush_error}")
+                    elif self.options.debug:
+                        info(f"Langfuse generation logged (batched, {self._langfuse_call_count % batch_size}/{batch_size})")
+
+                # For "manual" strategy, don't flush here (flush at end of review)
 
             except Exception as e:
                 # Don't fail the request if Langfuse logging fails
