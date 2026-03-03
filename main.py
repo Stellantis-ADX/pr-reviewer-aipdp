@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from github_action_utils import error
 from github_action_utils import notice
 from github_action_utils import notice as warning
+from core.bots.bot_local import LocalBot, LocalOptions
 
 # Load .env file for local development
 load_dotenv()
@@ -31,7 +32,7 @@ from core.utils import get_input_default, get_total_new_lines, string_to_bool
 # If the event is a pull request review comment, it calls the handleReviewComment function.
 # If the event is neither a pull request nor a pull request review comment, it logs a warning message.
 # If any error occurs during the process, it sets the action as failed and logs the error message.
-
+    
 WORKSPACE_PATH = Path(__file__).resolve().parent
 
 sys.path.insert(1, str(WORKSPACE_PATH))
@@ -147,6 +148,16 @@ def run():
                     api_key=options.databricks_token,
                     base_url=options.databricks_base_url,
                 )
+            # ✅ NEW: Local mode (Ollama) if local base URL + GitHub token exist
+            elif (os.getenv("GITHUB_TOKEN") and (os.getenv("LOCAL_BASE_URL") or os.getenv("OLLAMA_BASE_URL"))):
+                light_bot = LocalBot(
+                    options,
+                    LocalOptions(
+                        os.getenv("LOCAL_LIGHT_MODEL", "deepseek-coder:6.7b-instruct-q4_K_M"),
+                        options.light_token_limits,   # reuse existing limits
+                    ),
+                    base_url=os.getenv("LOCAL_BASE_URL") or os.getenv("OLLAMA_BASE_URL"),
+                )
             else:
                 # Fallback to original HF/Azure setup
                 light_bot_azure = None
@@ -184,6 +195,16 @@ def run():
                     ),
                     api_key=options.databricks_token,
                     base_url=options.databricks_base_url,
+                )
+            # ✅ NEW: Local mode (Ollama) if local base URL + GitHub token exist
+            elif (os.getenv("GITHUB_TOKEN") and (os.getenv("LOCAL_BASE_URL") or os.getenv("OLLAMA_BASE_URL"))):
+                heavy_bot = LocalBot(
+                    options,
+                    LocalOptions(
+                        os.getenv("LOCAL_HEAVY_MODEL", "llama3:8b-instruct-q4_K_M"),
+                        options.heavy_token_limits,   # reuse existing limits
+                    ),
+                    base_url=os.getenv("LOCAL_BASE_URL") or os.getenv("OLLAMA_BASE_URL"),
                 )
             else:
                 # Fallback to original HF/Azure setup
