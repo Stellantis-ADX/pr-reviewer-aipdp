@@ -141,6 +141,63 @@ class ClaudeBot(Bot):
             except Exception as e:
                 info(f"Langfuse flush warning: {e}")
 
+    def log_pr_review_metrics(
+        self,
+        files_reviewed: int,
+        comments_generated: int,
+        lines_of_code_reviewed: int
+    ):
+        """
+        Log aggregate PR review metrics to Langfuse.
+        This creates a separate event to track overall review statistics.
+        Called at the end of the review process with aggregated metrics.
+        """
+        if not self.langfuse:
+            return
+
+        try:
+            # Get PR context
+            pr_number = self.pr_context.get("pr_number", "unknown")
+            repo_name = self.pr_context.get("repository", "unknown")
+
+            # Generate trace ID (same as used in chat() calls)
+            trace_id = self.langfuse.create_trace_id(seed=f"pr-{repo_name}-{pr_number}")
+            trace_context = {"trace_id": trace_id}
+
+            # Create event name for aggregate metrics
+            repo_short = repo_name.split('/')[-1] if '/' in repo_name else repo_name
+            event_name = f"{repo_short}-pr{pr_number}-aggregate-metrics"
+
+            # Log aggregate metrics as a generation event
+            generation = self.langfuse.start_observation(
+                as_type="generation",
+                trace_context=trace_context,
+                name=event_name,
+                model=self.api["model"],
+                metadata={
+                    "repository": repo_name,  # Use actual repo name, not sanitized
+                    "pr_number": str(pr_number),
+                    "files_reviewed": files_reviewed,
+                    "comments_generated": comments_generated,
+                    "lines_of_code_reviewed": lines_of_code_reviewed,
+                    "review_type": "aggregate_metrics"
+                },
+                level="DEFAULT"
+            )
+
+            generation.end()
+
+            # Flush immediately to ensure metrics are logged
+            self.langfuse.flush()
+
+            if self.options.debug:
+                info(f"Langfuse: Logged aggregate metrics - Files: {files_reviewed}, "
+                     f"Comments: {comments_generated}, LOC: {lines_of_code_reviewed}")
+
+        except Exception as e:
+            if self.options.debug:
+                info(f"Langfuse: Failed to log aggregate metrics: {e}")
+
     def __del__(self):
         """Cleanup: Flush Langfuse data on bot destruction."""
         if hasattr(self, 'langfuse') and self.langfuse:
