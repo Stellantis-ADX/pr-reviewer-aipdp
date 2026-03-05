@@ -1,0 +1,79 @@
+{
+  "action": "opened",
+  "number": 7,
+  "pull_request": {
+    "number": 7,
+    "title": "Dev",
+    "body": "\n\n<!-- This is an auto-generated comment: release notes by Dev Tools AI -->\n### Release notes by Dev Tools AI\n\n## Release Notes\n- **New Feature**: Added support for 8 new scientific calculator operations: sine, cosine, tangent, logarithm, natural log, exponential, square, and cube.\n- **Test**: Added new tests for these functions.\n- **Documentation**: Updated documentation to reflect the new operations.\n<!-- end of auto-generated comment: release notes by Dev Tools AI -->",
+    "state": "open",
+    "draft": false,
+    "merged": false,
+    "base": {
+      "ref": "main",
+      "sha": "a311ab81896177efae03e05b19b11f0b9cf75865",
+      "repo": {
+        "name": "test-pr-review",
+        "full_name": "Stellantis-ADX/test-pr-review",
+        "owner": {
+          "login": "Stellantis-ADX",
+          "type": "Organization"
+        },
+        "private": true,
+        "html_url": "https://github.com/Stellantis-ADX/test-pr-review",
+        "default_branch": "main"
+      }
+    },
+    "head": {
+      "ref": "dev",
+      "sha": "007329327c9d38e40b27c493f05c5eee6a5cecd4",
+      "repo": {
+        "name": "test-pr-review",
+        "full_name": "Stellantis-ADX/test-pr-review",
+        "owner": {
+          "login": "Stellantis-ADX",
+          "type": "Organization"
+        },
+        "private": true,
+        "html_url": "https://github.com/Stellantis-ADX/test-pr-review"
+      }
+    },
+    "user": {
+      "login": "akshukla1992",
+      "type": "User"
+    },
+    "additions": 538,
+    "deletions": 141,
+    "changed_files": 5,
+    "commits": 5,
+    "html_url": "https://github.com/Stellantis-ADX/test-pr-review/pull/7",
+    "diff_url": "https://github.com/Stellantis-ADX/test-pr-review/pull/7.diff",
+    "patch_url": "https://github.com/Stellantis-ADX/test-pr-review/pull/7.patch",
+    "_links": {
+      "html": {
+        "href": "https://github.com/Stellantis-ADX/test-pr-review/pull/7"
+      },
+      "comments": {
+        "href": "https://api.github.com/repos/Stellantis-ADX/test-pr-review/issues/7/comments"
+      },
+      "commits": {
+        "href": "https://api.github.com/repos/Stellantis-ADX/test-pr-review/pulls/7/commits"
+      }
+    }
+  },
+  "repository": {
+    "name": "test-pr-review",
+    "full_name": "Stellantis-ADX/test-pr-review",
+    "owner": {
+      "login": "Stellantis-ADX",
+      "type": "Organization"
+    },
+    "private": true,
+    "html_url": "https://github.com/Stellantis-ADX/test-pr-review",
+    "url": "https://api.github.com/repos/Stellantis-ADX/test-pr-review",
+    "default_branch": "main"
+  },
+  "sender": {
+    "login": "akshukla1992",
+    "type": "User"
+  }
+}

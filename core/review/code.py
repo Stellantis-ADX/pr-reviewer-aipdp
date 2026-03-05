@@ -406,6 +406,31 @@ def code_review(light_bot: Bot, heavy_bot: Bot, options: Options, prompts: Promp
             allow_empty_review=options.allow_empty_review,
         )
 
+    # Calculate aggregate metrics for Langfuse logging
+    files_reviewed_count = len(filtered_files)
+    comments_generated_count = len(review_summary.buffer) if not options.disable_review else 0
+
+    # Calculate total lines of code reviewed (additions + deletions)
+    lines_of_code_reviewed_count = 0
+    for file in filtered_files:
+        if file.file_diff:
+            # Count additions and deletions in the diff
+            lines_of_code_reviewed_count += file.file_diff.count('\n+') + file.file_diff.count('\n-')
+
+    # Log aggregate metrics to Langfuse (if bots support it)
+    if hasattr(light_bot, 'log_pr_review_metrics'):
+        light_bot.log_pr_review_metrics(
+            files_reviewed=files_reviewed_count,
+            comments_generated=comments_generated_count,
+            lines_of_code_reviewed=lines_of_code_reviewed_count
+        )
+    if hasattr(heavy_bot, 'log_pr_review_metrics'):
+        heavy_bot.log_pr_review_metrics(
+            files_reviewed=files_reviewed_count,
+            comments_generated=comments_generated_count,
+            lines_of_code_reviewed=lines_of_code_reviewed_count
+        )
+
     print(
         "[DEBUG]--------------------------BEFORE END COMMENT------------------------------------"
     )

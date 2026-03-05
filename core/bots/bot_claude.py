@@ -141,6 +141,63 @@ class ClaudeBot(Bot):
             except Exception as e:
                 info(f"Langfuse flush warning: {e}")
 
+    def log_pr_review_metrics(
+        self,
+        files_reviewed: int,
+        comments_generated: int,
+        lines_of_code_reviewed: int
+    ):
+        """
+        Log aggregate PR review metrics to Langfuse.
+        This creates a separate event to track overall review statistics.
+        """
+        if not self.langfuse:
+            return
+
+        try:
+            # Get PR context
+            pr_number = self.pr_context.get("pr_number", "unknown")
+            repo_name = self.pr_context.get("repository", "unknown")
+
+            # Sanitize repository name
+            sanitized_repo_name = repo_name.replace("Stellantis-ADX", "org").replace("Stellantis", "org")
+
+            # Generate trace ID (same as used in chat() calls)
+            trace_id = self.langfuse.create_trace_id(seed=f"pr-{sanitized_repo_name}-{pr_number}")
+            trace_context = {"trace_id": trace_id}
+
+            # Create event name for aggregate metrics
+            event_name = f"{sanitized_repo_name.split('/')[-1]}-pr{pr_number}-review-metrics"
+
+            # Log aggregate metrics as a generation event
+            generation = self.langfuse.start_observation(
+                as_type="generation",
+                trace_context=trace_context,
+                name=event_name,
+                model=self.api["model"],
+                metadata={
+                    "repository": sanitized_repo_name,
+                    "pr_number": str(pr_number),
+                    "files_reviewed": files_reviewed,
+                    "comments_generated": comments_generated,
+                    "lines_of_code_reviewed": lines_of_code_reviewed,
+                    "review_type": "aggregate_metrics"
+                },
+                level="DEFAULT"
+            )
+
+            generation.end()
+
+            # Flush immediately to ensure metrics are logged
+            self.langfuse.flush()
+
+            if self.options.debug:
+                info(f"Langfuse: Logged PR review metrics - Files: {files_reviewed}, Comments: {comments_generated}, LOC: {lines_of_code_reviewed}")
+
+        except Exception as e:
+            if self.options.debug:
+                info(f"Langfuse: Failed to log PR review metrics: {e}")
+
     def __del__(self):
         """Cleanup: Flush Langfuse data on bot destruction."""
         if hasattr(self, 'langfuse') and self.langfuse:
