@@ -131,6 +131,81 @@ class ClaudeBot(Bot):
         if repository:
             self.pr_context["repository"] = repository
 
+    def flush_langfuse(self):
+        """Manually flush any pending Langfuse data."""
+        if self.langfuse:
+            try:
+                self.langfuse.flush()
+                if self.options.debug:
+                    info("Langfuse: Flushed all pending data")
+            except Exception as e:
+                info(f"Langfuse flush warning: {e}")
+
+    def log_pr_review_metrics(
+        self,
+        files_reviewed: int,
+        comments_generated: int,
+        lines_of_code_reviewed: int
+    ):
+        """
+        Log aggregate PR review metrics to Langfuse.
+        This creates a separate event to track overall review statistics.
+        Called at the end of the review process with aggregated metrics.
+        """
+        if not self.langfuse:
+            return
+
+        try:
+            # Get PR context
+            pr_number = self.pr_context.get("pr_number", "unknown")
+            repo_name = self.pr_context.get("repository", "unknown")
+
+            # Generate trace ID (same as used in chat() calls)
+            trace_id = self.langfuse.create_trace_id(seed=f"pr-{repo_name}-{pr_number}")
+            trace_context = {"trace_id": trace_id}
+
+            # Create event name for aggregate metrics
+            repo_short = repo_name.split('/')[-1] if '/' in repo_name else repo_name
+            event_name = f"{repo_short}-pr{pr_number}-aggregate-metrics"
+
+            # Log aggregate metrics as a generation event
+            generation = self.langfuse.start_observation(
+                as_type="generation",
+                trace_context=trace_context,
+                name=event_name,
+                model=self.api["model"],
+                metadata={
+                    "repository": repo_name,  # Use actual repo name, not sanitized
+                    "pr_number": str(pr_number),
+                    "files_reviewed": files_reviewed,
+                    "comments_generated": comments_generated,
+                    "lines_of_code_reviewed": lines_of_code_reviewed,
+                    "review_type": "aggregate_metrics"
+                },
+                level="DEFAULT"
+            )
+
+            generation.end()
+
+            # Flush immediately to ensure metrics are logged
+            self.langfuse.flush()
+
+            if self.options.debug:
+                info(f"Langfuse: Logged aggregate metrics - Files: {files_reviewed}, "
+                     f"Comments: {comments_generated}, LOC: {lines_of_code_reviewed}")
+
+        except Exception as e:
+            if self.options.debug:
+                info(f"Langfuse: Failed to log aggregate metrics: {e}")
+
+    def __del__(self):
+        """Cleanup: Flush Langfuse data on bot destruction."""
+        if hasattr(self, 'langfuse') and self.langfuse:
+            try:
+                self.langfuse.flush()
+            except:
+                pass  # Silent cleanup
+
     def chat(
         self,
         message: str,
@@ -259,12 +334,13 @@ class ClaudeBot(Bot):
             # Log error to Langfuse as generation with ERROR level
             if langfuse_trace_context and self.langfuse:
                 try:
+                    truncate_limit = int(os.getenv("LANGFUSE_TRUNCATE_LIMIT", "500"))
                     generation = self.langfuse.start_observation(
                         as_type="generation",
                         trace_context=langfuse_trace_context,
                         name=f"{langfuse_event_name}-error",
-                        input=message[:500],
-                        output=error_msg,
+                        input=message[:truncate_limit] if message else "",
+                        output=error_msg[:truncate_limit] if error_msg else "",
                         model=self.api['model'],
                         model_parameters={
                             "temperature": self.api["temperature"],
@@ -296,12 +372,13 @@ class ClaudeBot(Bot):
             # Log error to Langfuse as generation with ERROR level
             if langfuse_trace_context and self.langfuse:
                 try:
+                    truncate_limit = int(os.getenv("LANGFUSE_TRUNCATE_LIMIT", "500"))
                     generation = self.langfuse.start_observation(
                         as_type="generation",
                         trace_context=langfuse_trace_context,
                         name=f"{langfuse_event_name}-error",
-                        input=message[:500],
-                        output=error_msg,
+                        input=message[:truncate_limit] if message else "",
+                        output=error_msg[:truncate_limit] if error_msg else "",
                         model=self.api['model'],
                         model_parameters={
                             "temperature": self.api["temperature"],
@@ -372,13 +449,19 @@ class ClaudeBot(Bot):
                         "total": usage_data.get("total", 0)
                     }
 
+                # Get truncation limit from environment (default 500 for large code reviews)
+                truncate_limit = int(os.getenv("LANGFUSE_TRUNCATE_LIMIT", "500"))
+
+                # Option to disable content logging entirely (only log metadata)
+                log_content = os.getenv("LANGFUSE_LOG_CONTENT", "true").lower() == "true"
+
                 # Create generation (not event) for proper cost tracking
                 generation = self.langfuse.start_observation(
                     as_type="generation",
                     trace_context=langfuse_trace_context,
                     name=langfuse_event_name,
-                    input=message[:1000],  # Truncate to avoid huge payloads
-                    output=response_text[:1000],
+                    input=message[:truncate_limit] if (message and log_content) else None,
+                    output=response_text[:truncate_limit] if (response_text and log_content) else None,
                     model=self.api['model'],
                     model_parameters={
                         "temperature": self.api["temperature"],
@@ -392,11 +475,42 @@ class ClaudeBot(Bot):
                 # End the generation
                 generation.end()
 
-                # Flush to ensure data is sent immediately
-                self.langfuse.flush()
+                # Flush strategy: immediate, batch, or manual
+                flush_strategy = os.getenv("LANGFUSE_FLUSH_STRATEGY", "batch")
 
-                if self.options.debug:
-                    info(f"Langfuse generation logged successfully (ID: {generation.id if hasattr(generation, 'id') else 'N/A'})")
+                if flush_strategy == "immediate":
+                    # Flush immediately (old behavior, may cause 403)
+                    try:
+                        self.langfuse.flush()
+                        if self.options.debug:
+                            info(f"Langfuse generation logged (immediate flush)")
+                    except Exception as flush_error:
+                        error_msg = str(flush_error)
+                        if "403" in error_msg or "Forbidden" in error_msg:
+                            info(f"Langfuse 403 error. Try LANGFUSE_FLUSH_STRATEGY=batch or LANGFUSE_LOG_CONTENT=false")
+                        else:
+                            info(f"Langfuse flush warning: {error_msg}")
+
+                elif flush_strategy == "batch":
+                    # Let Langfuse batch internally (default, recommended)
+                    # Only flush periodically to avoid 403
+                    if not hasattr(self, '_langfuse_call_count'):
+                        self._langfuse_call_count = 0
+                    self._langfuse_call_count += 1
+
+                    # Flush every N calls (configurable)
+                    batch_size = int(os.getenv("LANGFUSE_BATCH_SIZE", "10"))
+                    if self._langfuse_call_count % batch_size == 0:
+                        try:
+                            self.langfuse.flush()
+                            if self.options.debug:
+                                info(f"Langfuse batch flushed ({self._langfuse_call_count} calls)")
+                        except Exception as flush_error:
+                            info(f"Langfuse batch flush warning: {flush_error}")
+                    elif self.options.debug:
+                        info(f"Langfuse generation logged (batched, {self._langfuse_call_count % batch_size}/{batch_size})")
+
+                # For "manual" strategy, don't flush here (flush at end of review)
 
             except Exception as e:
                 # Don't fail the request if Langfuse logging fails

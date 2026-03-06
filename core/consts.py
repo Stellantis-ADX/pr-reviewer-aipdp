@@ -12,10 +12,10 @@ ACTION_INPUTS = (
     else read_yaml_file(str(ROOT_FOLDER.joinpath("action.yml")))
 )
 BOT_NAME = "@devtoolsai"
-BOT_NAME_NO_TAG = "Dev Tools AI"
+BOT_NAME_NO_TAG = "[AI_PR] Dev Tools AI"
 IGNORE_KEYWORD = f"{BOT_NAME}: ignore"
-PR_LINES_LIMIT = 1000
-FEEDBACK_EMAIL = "devtools@stellantis.com"
+PR_LINES_LIMIT = 2000
+FEEDBACK_EMAIL = "ashish.shukla@stellantis.com"
 DISMISSAL_MESSAGE = (
     "🤖🙂 Review deleted, smiles undefeated! 🙂🤖 (option less_spammy ✅)"
 )

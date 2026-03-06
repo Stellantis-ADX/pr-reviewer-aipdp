@@ -370,6 +370,9 @@ def code_review(light_bot: Bot, heavy_bot: Bot, options: Options, prompts: Promp
         pr_info=pr_info,
     )
 
+    # Initialize review_summary for metrics calculation
+    review_summary = None
+
     if not options.disable_review:
 
         review_summary, skipped_files = generate_reviews_on_filtered_files(
@@ -405,6 +408,43 @@ def code_review(light_bot: Bot, heavy_bot: Bot, options: Options, prompts: Promp
             status_msg=status_message_finished_review,
             allow_empty_review=options.allow_empty_review,
         )
+
+    # ============================================================================
+    # Log aggregate metrics to Langfuse (after all processing is complete)
+    # ============================================================================
+
+    # Calculate aggregate metrics
+    total_files_reviewed = len(filtered_files)
+    total_comments_generated = len(review_summary.buffer) if review_summary else 0
+
+    # Calculate total lines of code reviewed (additions + deletions across all files)
+    total_lines_reviewed = 0
+    for file in filtered_files:
+        if file.file_diff:
+            # Count lines starting with + or - (excluding +++ and ---)
+            lines = file.file_diff.split('\n')
+            for line in lines:
+                if line.startswith('+') and not line.startswith('+++'):
+                    total_lines_reviewed += 1
+                elif line.startswith('-') and not line.startswith('---'):
+                    total_lines_reviewed += 1
+
+    # Log metrics to Langfuse once (using heavy_bot since it does the reviews)
+    if hasattr(heavy_bot, 'log_pr_review_metrics'):
+        try:
+            heavy_bot.log_pr_review_metrics(
+                files_reviewed=total_files_reviewed,
+                comments_generated=total_comments_generated,
+                lines_of_code_reviewed=total_lines_reviewed
+            )
+            if options.debug:
+                print(f"Logged aggregate metrics: "
+                      f"files={total_files_reviewed}, "
+                      f"comments={total_comments_generated}, "
+                      f"lines={total_lines_reviewed}")
+        except Exception as e:
+            if options.debug:
+                print(f"Failed to log aggregate metrics: {e}")
 
     print(
         "[DEBUG]--------------------------BEFORE END COMMENT------------------------------------"
