@@ -37,6 +37,17 @@ class TokenLimits:
             self.max_tokens = 32600  # Llama 4 context length
             self.response_tokens = 4000  # Large response capability
             self.knowledge_cut_off = "2025-01-01"
+        # Local Ollama models
+        elif model.startswith("deepseek-coder"):
+            # DeepSeek-Coder 6.7B
+            self.max_tokens = 32600
+            self.response_tokens = 4000
+            self.knowledge_cut_off = "2025-01-01"
+        elif model.startswith("llama3"):
+            # Llama 3 8B
+            self.max_tokens = 8000
+            self.response_tokens = 1000
+            self.knowledge_cut_off = "2025-01-01"
         elif model.startswith("claude-"):
             # Generic Claude model fallback
             self.max_tokens = 200000
